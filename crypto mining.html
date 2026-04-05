@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CRYPTO MINING PLATFORM</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0a0f1c;
+  color: white;
+}
+
+header {
+  text-align: center;
+  padding: 20px;
+  font-size: 24px;
+  background: linear-gradient(90deg,#f7931a,#ffcc00);
+  color: black;
+}
+
+.container {
+  padding: 20px;
+}
+
+.card {
+  background: #111827;
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  background: #f7931a;
+  cursor: pointer;
+  width: 100%;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>⚡ CRYPTO MINING PLATFORM</header>
+
+<div class="container">
+
+<div class="card">
+<h3>Wallet</h3>
+<button onclick="connectWallet()">Connect MetaMask</button>
+<p id="wallet"></p>
+</div>
+
+<div class="card">
+<h3>Deposit BTC</h3>
+<p>Send BTC to:</p>
+<small>bc1plvp5kr53rmg2vs0j4vzk8zjnpakwneuwytuz4c3nn0fg28n6lfkqs0zgry</small>
+<button onclick="checkDeposit()">Check Deposit</button>
+</div>
+
+<div class="card">
+<h3>Balance</h3>
+<p id="balance">0 BTC</p>
+</div>
+
+<div class="card">
+<h3>Mining</h3>
+<button onclick="startMining()">Start Mining</button>
+<p id="mining"></p>
+</div>
+
+</div>
+
+<script>
+const API = "http://localhost:3000";
+let userWallet = "";
+
+async function connectWallet() {
+  const acc = await ethereum.request({ method: 'eth_requestAccounts' });
+  userWallet = acc[0];
+  document.getElementById("wallet").innerText = userWallet;
+
+  await fetch(API+"/register", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({wallet:userWallet})
+  });
+}
+
+async function checkDeposit() {
+  const res = await fetch(API+"/balance/"+userWallet);
+  const data = await res.json();
+
+  document.getElementById("balance").innerText = data.balance + " BTC";
+}
+
+function startMining() {
+  let earn = 0;
+  setInterval(()=>{
+    earn += Math.random()*0.00001;
+    document.getElementById("mining").innerText = earn.toFixed(6)+" BTC";
+  },2000);
+}
+</script>
+
+</body>
+</html>
