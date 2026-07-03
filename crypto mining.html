@@ -51,7 +51,7 @@ button {
 
 <div class="card">
 <h3>Wallet</h3>
-<button onclick="connectWallet()">Connect MetaMask</button>
+<button onclick="onConnectWallet()">Connect MetaMask</button>
 <p id="wallet"></p>
 </div>
 
@@ -59,7 +59,7 @@ button {
 <h3>Deposit BTC</h3>
 <p>Send BTC to:</p>
 <small>bc1plvp5kr53rmg2vs0j4vzk8zjnpakwneuwytuz4c3nn0fg28n6lfkqs0zgry</small>
-<button onclick="checkDeposit()">Check Deposit</button>
+<button onclick="onCheckDeposit()">Check Deposit</button>
 </div>
 
 <div class="card">
@@ -69,41 +69,36 @@ button {
 
 <div class="card">
 <h3>Mining</h3>
-<button onclick="startMining()">Start Mining</button>
+<button onclick="onStartMining()">Start Mining</button>
 <p id="mining"></p>
 </div>
 
 </div>
 
+<script src="src/wallet.js"></script>
+<script src="src/balance.js"></script>
+<script src="src/mining.js"></script>
 <script>
 const API = "http://localhost:3000";
 let userWallet = "";
+let miningSession = null;
 
-async function connectWallet() {
-  const acc = await ethereum.request({ method: 'eth_requestAccounts' });
-  userWallet = acc[0];
+async function onConnectWallet() {
+  userWallet = await connectWallet(ethereum, fetch.bind(window), API);
   document.getElementById("wallet").innerText = userWallet;
-
-  await fetch(API+"/register", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({wallet:userWallet})
-  });
 }
 
-async function checkDeposit() {
-  const res = await fetch(API+"/balance/"+userWallet);
-  const data = await res.json();
-
-  document.getElementById("balance").innerText = data.balance + " BTC";
+async function onCheckDeposit() {
+  const balance = await checkDeposit(userWallet, fetch.bind(window), API);
+  document.getElementById("balance").innerText = balance + " BTC";
 }
 
-function startMining() {
-  let earn = 0;
-  setInterval(()=>{
-    earn += Math.random()*0.00001;
-    document.getElementById("mining").innerText = earn.toFixed(6)+" BTC";
-  },2000);
+function onStartMining() {
+  if (miningSession && miningSession.isRunning()) return;
+  miningSession = createMiningSession();
+  miningSession.start(function(earnings) {
+    document.getElementById("mining").innerText = formatBTC(earnings);
+  }, 2000);
 }
 </script>
 
