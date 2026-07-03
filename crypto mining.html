@@ -78,32 +78,81 @@ button {
 <script>
 const API = "http://localhost:3000";
 let userWallet = "";
+let miningInterval = null;
 
 async function connectWallet() {
-  const acc = await ethereum.request({ method: 'eth_requestAccounts' });
-  userWallet = acc[0];
-  document.getElementById("wallet").innerText = userWallet;
+  if (typeof window.ethereum === "undefined") {
+    alert("MetaMask is not installed. Please install MetaMask to connect your wallet.");
+    return;
+  }
 
-  await fetch(API+"/register", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({wallet:userWallet})
-  });
+  try {
+    const acc = await ethereum.request({ method: 'eth_requestAccounts' });
+    if (!acc || acc.length === 0) {
+      alert("No accounts found. Please unlock MetaMask and try again.");
+      return;
+    }
+    userWallet = acc[0];
+    document.getElementById("wallet").innerText = userWallet;
+  } catch (err) {
+    if (err.code === 4001) {
+      alert("Connection rejected. Please approve the MetaMask request to continue.");
+    } else {
+      alert("Failed to connect wallet: " + err.message);
+    }
+    console.error("connectWallet error:", err);
+    return;
+  }
+
+  try {
+    const res = await fetch(API + "/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet: userWallet })
+    });
+    if (!res.ok) {
+      throw new Error("Server responded with status " + res.status);
+    }
+  } catch (err) {
+    alert("Failed to register wallet with server: " + err.message);
+    console.error("register error:", err);
+  }
 }
 
 async function checkDeposit() {
-  const res = await fetch(API+"/balance/"+userWallet);
-  const data = await res.json();
+  if (!userWallet) {
+    alert("Please connect your wallet first.");
+    return;
+  }
 
-  document.getElementById("balance").innerText = data.balance + " BTC";
+  try {
+    const res = await fetch(API + "/balance/" + userWallet);
+    if (!res.ok) {
+      throw new Error("Server responded with status " + res.status);
+    }
+    const data = await res.json();
+    if (data.balance === undefined || data.balance === null) {
+      throw new Error("Invalid balance data received from server.");
+    }
+    document.getElementById("balance").innerText = data.balance + " BTC";
+  } catch (err) {
+    alert("Failed to check deposit: " + err.message);
+    console.error("checkDeposit error:", err);
+  }
 }
 
 function startMining() {
+  if (miningInterval !== null) {
+    alert("Mining is already running.");
+    return;
+  }
+
   let earn = 0;
-  setInterval(()=>{
-    earn += Math.random()*0.00001;
-    document.getElementById("mining").innerText = earn.toFixed(6)+" BTC";
-  },2000);
+  miningInterval = setInterval(() => {
+    earn += Math.random() * 0.00001;
+    document.getElementById("mining").innerText = earn.toFixed(6) + " BTC mined";
+  }, 2000);
+  document.getElementById("mining").innerText = "Mining started...";
 }
 </script>
 
