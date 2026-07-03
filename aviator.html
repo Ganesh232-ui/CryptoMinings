@@ -233,7 +233,7 @@ function crash() {
 
 function finishRound(cashedOut) {
   const chip = document.createElement("span");
-  const m = cashedOut ? current : crashPoint;
+  const m = crashPoint;
   chip.className = "chip " + (m < 2 ? "low" : m < 10 ? "mid" : "high");
   chip.textContent = fmt(crashPoint) + "x";
   historyEl.prepend(chip);
