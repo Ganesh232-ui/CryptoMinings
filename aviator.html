@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AVIATOR CRASH GAME SIMULATOR</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0a0f1c;
+  color: white;
+}
+
+header {
+  text-align: center;
+  padding: 20px;
+  font-size: 24px;
+  background: linear-gradient(90deg,#f7931a,#ffcc00);
+  color: black;
+}
+
+.container {
+  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #111827;
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  background: #f7931a;
+  cursor: pointer;
+  width: 100%;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+button:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.disclaimer {
+  background: #1f2937;
+  border-left: 4px solid #ffcc00;
+  padding: 12px;
+  font-size: 13px;
+  color: #d1d5db;
+}
+
+#gameCanvas {
+  width: 100%;
+  background: #0d1424;
+  border-radius: 10px;
+  display: block;
+}
+
+#multiplier {
+  text-align: center;
+  font-size: 48px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.crashed { color: #ef4444; }
+.flying { color: #22c55e; }
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.controls input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: #0d1424;
+  color: white;
+}
+
+.controls button { flex: 1; }
+
+#history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: #1f2937;
+}
+
+.chip.low { color: #ef4444; }
+.chip.mid { color: #38bdf8; }
+.chip.high { color: #a78bfa; }
+</style>
+</head>
+
+<body>
+
+<header>✈️ AVIATOR CRASH GAME — SIMULATOR</header>
+
+<div class="container">
+
+<div class="disclaimer">
+This is a <strong>simulator for entertainment only</strong>. It uses virtual coins and a
+random number generator. Crash multipliers are random and <strong>cannot be predicted</strong> —
+here or in any real crash game. No real money is involved.
+</div>
+
+<div class="card">
+  <div id="multiplier" class="flying">1.00x</div>
+  <canvas id="gameCanvas" width="860" height="300"></canvas>
+</div>
+
+<div class="card">
+  <h3>Play (virtual coins)</h3>
+  <p>Balance: <strong id="balance">1000.00</strong> coins</p>
+  <div class="controls">
+    <input id="bet" type="number" min="1" step="1" value="10">
+    <button id="actionBtn" onclick="onAction()">Place Bet & Start</button>
+  </div>
+  <p id="status"></p>
+</div>
+
+<div class="card">
+  <h3>Round History</h3>
+  <div id="history"></div>
+</div>
+
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const multiplierEl = document.getElementById("multiplier");
+const balanceEl = document.getElementById("balance");
+const statusEl = document.getElementById("status");
+const historyEl = document.getElementById("history");
+const actionBtn = document.getElementById("actionBtn");
+const betInput = document.getElementById("bet");
+
+let balance = 1000;
+let bet = 0;
+let state = "idle"; // idle | flying | crashed
+let crashPoint = 0;
+let current = 1;
+let startTime = 0;
+let animId = null;
+
+// House-edge-free crash distribution: P(crash >= m) = 1/m, capped at 100x
+function randomCrashPoint() {
+  const u = Math.random();
+  return Math.min(100, Math.max(1, 1 / (1 - u)));
+}
+
+function fmt(x) { return x.toFixed(2); }
+
+function updateBalance() { balanceEl.textContent = fmt(balance); }
+
+function onAction() {
+  if (state === "flying") {
+    cashOut();
+  } else {
+    startRound();
+  }
+}
+
+function startRound() {
+  const b = parseFloat(betInput.value);
+  if (!(b > 0)) { statusEl.textContent = "Enter a valid bet."; return; }
+  if (b > balance) { statusEl.textContent = "Insufficient balance."; return; }
+  bet = b;
+  balance -= bet;
+  updateBalance();
+  crashPoint = randomCrashPoint();
+  current = 1;
+  state = "flying";
+  startTime = performance.now();
+  actionBtn.textContent = "Cash Out";
+  statusEl.textContent = "Flying... cash out before the crash!";
+  multiplierEl.className = "flying";
+  animId = requestAnimationFrame(tick);
+}
+
+function tick(now) {
+  const t = (now - startTime) / 1000;
+  current = Math.pow(Math.E, 0.18 * t); // exponential growth
+  if (current >= crashPoint) {
+    current = crashPoint;
+    crash();
+    return;
+  }
+  multiplierEl.textContent = fmt(current) + "x";
+  draw(t, false);
+  animId = requestAnimationFrame(tick);
+}
+
+function cashOut() {
+  cancelAnimationFrame(animId);
+  const win = bet * current;
+  balance += win;
+  updateBalance();
+  state = "idle";
+  actionBtn.textContent = "Place Bet & Start";
+  statusEl.textContent = "Cashed out at " + fmt(current) + "x — won " + fmt(win) + " coins!";
+  finishRound(true);
+}
+
+function crash() {
+  cancelAnimationFrame(animId);
+  state = "idle";
+  actionBtn.textContent = "Place Bet & Start";
+  multiplierEl.className = "crashed";
+  multiplierEl.textContent = fmt(crashPoint) + "x 💥";
+  statusEl.textContent = "Crashed at " + fmt(crashPoint) + "x — lost " + fmt(bet) + " coins.";
+  draw((performance.now() - startTime) / 1000, true);
+  finishRound(false);
+}
+
+function finishRound(cashedOut) {
+  const chip = document.createElement("span");
+  const m = crashPoint;
+  chip.className = "chip " + (m < 2 ? "low" : m < 10 ? "mid" : "high");
+  chip.textContent = fmt(crashPoint) + "x";
+  historyEl.prepend(chip);
+  while (historyEl.children.length > 20) historyEl.removeChild(historyEl.lastChild);
+  if (balance < 1) {
+    balance = 1000;
+    updateBalance();
+    statusEl.textContent += " Balance refilled to 1000 virtual coins.";
+  }
+}
+
+function draw(t, crashed) {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // grid
+  ctx.strokeStyle = "#1f2937";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 60) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += 60) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // curve
+  const maxT = Math.max(t, 5);
+  const maxM = Math.max(current, 2);
+  ctx.strokeStyle = crashed ? "#ef4444" : "#f7931a";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let px = 0; px <= (t / maxT) * w; px++) {
+    const tt = (px / w) * maxT;
+    const m = Math.pow(Math.E, 0.18 * tt);
+    const py = h - ((m - 1) / (maxM - 1)) * (h - 40) - 10;
+    if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // plane
+  const px = (t / maxT) * w;
+  const py = h - ((current - 1) / (maxM - 1)) * (h - 40) - 10;
+  ctx.font = "24px Arial";
+  ctx.fillText(crashed ? "💥" : "✈️", px - 12, py + 8);
+}
+
+draw(0, false);
+updateBalance();
+</script>
+
+</body>
+</html>
