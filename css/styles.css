@@ -1,0 +1,33 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0a0f1c;
+  color: white;
+}
+
+header {
+  text-align: center;
+  padding: 20px;
+  font-size: 24px;
+  background: linear-gradient(90deg, #f7931a, #ffcc00);
+  color: black;
+}
+
+.container {
+  padding: 20px;
+}
+
+.card {
+  background: #111827;
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  background: #f7931a;
+  cursor: pointer;
+  width: 100%;
+}
